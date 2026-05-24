@@ -114,5 +114,21 @@ public class Lotus : MonoBehaviour
         if (neighbors != null)
             foreach (var n in neighbors)
                 if (n != null) Gizmos.DrawLine(p, n.StandPosition);
+
+        // STATUS dot above the lotus: green = free, red = occupied.
+        // (occupancy is only meaningful during Play)
+        if (Application.isPlaying)
+        {
+            bool free = IsFree;
+            Gizmos.color = free ? Color.green : Color.red;
+            Gizmos.DrawSphere(p + Vector3.up * 1.5f, 0.3f);
+
+#if UNITY_EDITOR
+            // Show WHO occupies it, so you can spot phantom occupancy.
+            string label = free ? "FREE" : ("BUSY: " + (occupant != null ? occupant.name : "?"));
+            UnityEditor.Handles.color = free ? Color.green : Color.red;
+            UnityEditor.Handles.Label(p + Vector3.up * 2.0f, label);
+#endif
+        }
     }
 }

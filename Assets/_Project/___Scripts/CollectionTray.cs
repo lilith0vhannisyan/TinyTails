@@ -86,6 +86,15 @@ public class CollectionTray : MonoBehaviour
         if (prefab != null)
             go.transform.localScale = prefab.transform.localScale * trayScale;
 
+        // IMPORTANT: a tray axolotl is just decoration. Strip gameplay components
+        // so it does NOT claim a lotus on the board (that caused stuck lotuses).
+        var mover = go.GetComponent<AxolotlMover>();
+        if (mover != null) Destroy(mover);
+        var placer = go.GetComponent<AxolotlPlacer>();
+        if (placer != null) Destroy(placer);
+        var col = go.GetComponent<Collider>();
+        if (col != null) col.enabled = false;
+
         Entry e = new Entry { color = color, go = go };
         entries.Insert(insertIndex, e);
 

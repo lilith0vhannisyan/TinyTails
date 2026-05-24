@@ -59,12 +59,27 @@ public class AxolotlMover : MonoBehaviour
     private void Start()
     {
         faceCameraRot = transform.rotation;   // whatever you set in editor = facing player
-        currentLotus = FindNearestLotus(transform.position);
-        if (currentLotus != null)
+        // If we weren't already placed (e.g. by a bubble), find our lotus.
+        if (currentLotus == null)
         {
-            currentLotus.SetOccupant(this);
-            transform.position = currentLotus.StandPosition;
+            currentLotus = FindNearestLotus(transform.position);
+            if (currentLotus != null)
+            {
+                currentLotus.SetOccupant(this);
+                transform.position = currentLotus.StandPosition;
+            }
         }
+    }
+
+    // Explicitly place this axolotl on a lotus (used by the bubble on landing).
+    public void PlaceOnLotus(Lotus lotus)
+    {
+        if (lotus == null) return;
+        currentLotus = lotus;
+        lotus.SetOccupant(this);
+        transform.position = lotus.StandPosition;
+        faceCameraRot = transform.rotation;
+        state = State.Idle;
     }
 
     private void Update()
@@ -159,7 +174,13 @@ public class AxolotlMover : MonoBehaviour
                 // Arrived at the portal. Enter if color matches.
                 if (targetPortal.Accepts(axolotlColor))
                 {
-                    if (currentLotus != null) currentLotus.Clear();
+                    // Free ALL lotuses this axolotl holds RIGHT NOW (before the
+                    // portal animation), so the board updates immediately.
+                    foreach (var lotus in Lotus.All)
+                        if (lotus != null && lotus.occupant == this)
+                            lotus.Clear();
+                    currentLotus = null;
+
                     Portal p = targetPortal;
                     targetPortal = null;
                     state = State.Entering;

@@ -110,13 +110,17 @@ public class Bubble : MonoBehaviour
         var mover = go.GetComponent<AxolotlMover>();
         if (mover != null) mover.enabled = false;
 
+        // Reserve the lotus IMMEDIATELY (before the jump) so no other bubble or
+        // axolotl grabs it during the 0.5s jump.
+        if (mover != null) lotus.SetOccupant(mover);
+
         Vector3 land = lotus.StandPosition;
         go.transform.DOJump(land, jumpHeight, 1, jumpTime).SetEase(jumpEase)
           .OnComplete(() =>
           {
-              go.transform.position = land;
               if (mover != null) mover.enabled = true;   // now player-controllable
-              lotus.SetOccupant(mover);
+              if (mover != null) mover.PlaceOnLotus(lotus);  // clean placement + occupancy
+              else go.transform.position = land;
               releasing = false;
               UpdateDisplay();
               // After releasing, a chain reaction may free other spots; let manager re-check.
