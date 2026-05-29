@@ -7,7 +7,7 @@ using UnityEngine;
 [ExecuteAlways]
 public class AxolotlColor : MonoBehaviour
 {
-    public enum ColorType { Blue, Purple, Pink, Yellow }
+    public enum ColorType { Blue, Purple, Pink, Yellow, Orange }
 
     [Header("Which color is this axolotl?")]
     public ColorType colorType = ColorType.Pink;
@@ -29,6 +29,9 @@ public class AxolotlColor : MonoBehaviour
     public Color purpleTint = new Color(0.70f, 0.45f, 0.95f);
     public Color pinkTint   = new Color(1.00f, 0.55f, 0.80f);
     public Color yellowTint = new Color(1.00f, 0.85f, 0.35f);
+    public Color orangeTint = new Color(1.00f, 0.85f, 0.35f);
+
+
 
     private void OnEnable()   => Apply();
     private void OnValidate() => Apply();   // live update in editor when you change the dropdown
@@ -66,6 +69,7 @@ public class AxolotlColor : MonoBehaviour
             case ColorType.Purple: return purpleTint;
             case ColorType.Pink:   return pinkTint;
             case ColorType.Yellow: return yellowTint;
+            case ColorType.Orange: return orangeTint;
             default: return Color.white;
         }
     }

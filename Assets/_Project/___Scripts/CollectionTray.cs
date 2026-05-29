@@ -2,18 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 
-// Put this on an empty "Tray" object at the bottom of the screen.
-// Fill slotPoints with the point GameObjects (left to right) where axolotls sit.
-// Fill the 4 little "tray axolotl" prefabs (one per color) that get placed in slots.
-//
-// Behavior:
-//   - When an axolotl enters its portal, the portal calls AddAxolotl(color).
-//   - A small colored axolotl is placed in the tray, GROUPED by color
-//     (same colors always sit together, e.g. yellow yellow pink blue).
-//   - Others slide over (DOTween) to make room.
-//   - When 3 of the same color are grouped, they merge into the middle one
-//     and disappear, then the rest shift left to close the gap.
-//   - Fixed number of slots: if full, OnTrayFull fires (use for lose/own logic).
 public class CollectionTray : MonoBehaviour
 {
     [Header("Slots (left to right)")]
@@ -46,6 +34,21 @@ public class CollectionTray : MonoBehaviour
     public System.Action OnTrayFull;
     public System.Action<AxolotlColor.ColorType> OnMerged;
 
+    public static CollectionTray Instance;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
     // One entry per occupied slot, in slot order (index 0 = leftmost).
     private class Entry
     {
@@ -57,8 +60,11 @@ public class CollectionTray : MonoBehaviour
     // Add a newly-arrived axolotl of this color to the tray.
     public void AddAxolotl(AxolotlColor.ColorType color)
     {
+        Debug.Log("[Tray] AddAxolotl called: " + color + " | current Count=" + entries.Count + " | slotPoints.Count=" + slotPoints.Count);
+
         if (entries.Count >= slotPoints.Count)
         {
+            Debug.Log("[Tray] TRAY FULL - firing OnTrayFull event!");
             OnTrayFull?.Invoke();
             return;
         }
@@ -86,24 +92,50 @@ public class CollectionTray : MonoBehaviour
         if (prefab != null)
             go.transform.localScale = prefab.transform.localScale * trayScale;
 
+        // Force-apply the correct color so the tray axolotl matches the collected one,
+        // even if all 4 prefab slots point to the same base prefab.
+        var ac = go.GetComponent<AxolotlColor>();
+        if (ac == null) ac = go.GetComponentInChildren<AxolotlColor>();
+        if (ac != null)
+        {
+            ac.colorType = color;
+            ac.Apply();
+        }
+
         // IMPORTANT: a tray axolotl is just decoration. Strip gameplay components
         // so it does NOT claim a lotus on the board (that caused stuck lotuses).
-        var mover = go.GetComponent<AxolotlMover>();
-        if (mover != null) Destroy(mover);
+        var ice = go.GetComponent<AxolotlIce>();
+        if (ice != null) Destroy(ice);
+
         var placer = go.GetComponent<AxolotlPlacer>();
         if (placer != null) Destroy(placer);
+
+        var mover = go.GetComponent<AxolotlMover>();
+        if (mover != null) Destroy(mover);
+
         var col = go.GetComponent<Collider>();
         if (col != null) col.enabled = false;
 
         Entry e = new Entry { color = color, go = go };
         entries.Insert(insertIndex, e);
+        Debug.Log("[Tray] Entry ADDED. New Count=" + entries.Count);
 
         // Re-layout everyone to their slot positions (animated).
         Relayout(animateNewIndex: insertIndex);
 
+        //CheckWinCondition();
+
         // Check for a merge of this color — but wait for the new one to sit first.
         if (CountColorRun(color) >= mergeCount)
+        {
             StartCoroutine(MergeAfterDelay(color));
+        }
+        else if (entries.Count >= slotPoints.Count)
+        {
+            // Tray hit max capacity AND no merge is happening -> LOSE
+            Debug.Log("[Tray] Tray reached max (" + entries.Count + "/" + slotPoints.Count + ") with no merge - firing OnTrayFull!");
+            OnTrayFull?.Invoke();
+        }
     }
 
     private System.Collections.IEnumerator MergeAfterDelay(AxolotlColor.ColorType color)
@@ -202,6 +234,41 @@ public class CollectionTray : MonoBehaviour
             default: return null;
         }
     }
+
+    //private void CheckWinCondition()
+    //{
+    //    // 1. Find all axolotls currently moving/placed on the board
+    //    AxolotlMover[] activeMovers = Object.FindObjectsByType<AxolotlMover>(FindObjectsSortMode.None);
+
+    //    int collectibleAxolotlsLeft = 0;
+
+    //    foreach (var mover in activeMovers)
+    //    {
+    //        // Ignore decorative axolotls already sitting in this tray
+    //        if (mover.transform.IsChildOf(this.transform)) continue;
+
+    //        // Check if the axolotl has an Ice script attached
+    //        var iceComponent = mover.GetComponent<AxolotlIce>();
+
+    //        // If it doesn't have ice, OR it has ice but it's already broken/unfrozen, it's playable!
+    //        if (iceComponent == null || !iceComponent.IsFrozen)
+    //        {
+    //            collectibleAxolotlsLeft++;
+    //        }
+    //    }
+
+    //    Debug.Log($"[Win Check] Playable axolotls left on board: {collectibleAxolotlsLeft}");
+
+    //    // If 0 active, playable axolotls are left on the board, trigger level completion!
+    //    if (collectibleAxolotlsLeft == 0)
+    //    {
+    //        Debug.Log("[Win Check] Board completely cleared! Triggering CompleteCurrentLevel.");
+    //        if (GameManager.Instance != null)
+    //        {
+    //            GameManager.Instance.CompleteCurrentLevel();
+    //        }
+    //    }
+    //}
 
     public bool IsFull => entries.Count >= slotPoints.Count;
     public int Count => entries.Count;

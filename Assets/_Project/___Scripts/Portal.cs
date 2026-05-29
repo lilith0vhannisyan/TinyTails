@@ -21,6 +21,9 @@ public class Portal : MonoBehaviour
     public Ease riseEase = Ease.OutBack;
     public Ease moveEase = Ease.InOutSine;
 
+    [Header("Audio Customization")]
+    public AudioClip portalEnterSFX;
+
     [Header("Disappear effect")]
     [Tooltip("Optional particle prefab spawned at the portal when he vanishes.")]
     public GameObject vanishEffect;
@@ -48,8 +51,15 @@ public class Portal : MonoBehaviour
     public Vector3 StandPosition => standPoint != null ? standPoint.position : transform.position;
     public Vector3 Position => StandPosition;
 
+    // --- LOCK ---
+    // When locked, the portal rejects all axolotls until PortalLock opens it.
+    private bool locked = false;
+    public void SetLocked(bool value) => locked = value;
+    public bool IsLocked => locked;
+
     public bool Accepts(AxolotlColor axo)
     {
+        if (locked) return false;   // locked portals reject everyone
         return axo != null && axo.colorType == portalColor;
     }
 
@@ -60,6 +70,12 @@ public class Portal : MonoBehaviour
         Vector3 risePos = start + Vector3.up * riseHeight;
         Vector3 endPos = Position;
         Vector3 startScale = axolotl.localScale;
+
+        if (GameManager.Instance != null)
+        {
+            if (portalEnterSFX != null) GameManager.Instance.PlaySFX(portalEnterSFX);
+            GameManager.Instance.TriggerMediumVibration();
+        }
 
         Sequence seq = DOTween.Sequence();
         // 1) pop up

@@ -3,7 +3,32 @@ guid: 121d60a68796d924a91d4b9cf7e7b2d6
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PortalDarkerPink
+    second: {fileID: 2100000, guid: 48ab2f0732bcbcb458a7c17ab503385f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PortalLightPink
+    second: {fileID: 2100000, guid: ab38b1d8d8cecee40966a5c42606c3b8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PortalOverall
+    second: {fileID: 2100000, guid: b2a080c1564320a488a956a574c1cc5d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PortalOverallDetailsDark
+    second: {fileID: 2100000, guid: fc3fd3cb0a1b6594fb9684a702d108f9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PortalOverallDetailsLight
+    second: {fileID: 2100000, guid: d49072b8a75277f489a50b72e35a6e22, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

@@ -46,7 +46,24 @@ public class Bubble : MonoBehaviour
     [Header("Released axolotl facing")]
     public float facingYOffset = 180f;   // so it faces the player when it lands
 
+    [Header("Count-change pop (when number drops)")]
+    public float countPunchScale = 0.5f;
+    public float countPunchTime = 0.3f;
+    public bool flashColor = true;
+    public Color flashTo = Color.white;
+
+    [Header("Explode when empty")]
+    [Tooltip("Optional water-splash particle spawned when the bubble pops.")]
+    public GameObject explodeEffect;
+    [Tooltip("How big the bubble swells before popping.")]
+    public float explodeSwellScale = 1.3f;
+    public float explodeSwellTime = 0.2f;
+    public float explodePopTime = 0.15f;
+
     private bool releasing = false;
+    private Vector3 labelBaseScale = Vector3.one;
+    private Color labelBaseColor = Color.white;
+    private bool exploded = false;
 
     public bool IsEmpty => queue.Count == 0;
     public AxolotlColor.ColorType NextColor => queue.Count > 0 ? queue[0] : default;
@@ -54,6 +71,11 @@ public class Bubble : MonoBehaviour
     private void Start()
     {
         if (autoDetectNeighbors) DetectNeighbors();
+        if (countLabel != null)
+        {
+            labelBaseScale = countLabel.transform.localScale;
+            labelBaseColor = countLabel.color;
+        }
         UpdateDisplay();
         BubbleManager.Register(this);
     }
@@ -123,8 +145,11 @@ public class Bubble : MonoBehaviour
               else go.transform.position = land;
               releasing = false;
               UpdateDisplay();
+              PunchCount();   // animate the number dropping
               // After releasing, a chain reaction may free other spots; let manager re-check.
               BubbleManager.NotifyChanged();
+              // If the bubble is now empty, pop it with a water splash.
+              if (IsEmpty) Explode();
           });
 
         UpdateDisplay();
@@ -168,6 +193,47 @@ public class Bubble : MonoBehaviour
             case AxolotlColor.ColorType.Yellow: return yellowPrefab;
             default: return null;
         }
+    }
+
+    // DOTween pop + color flash on the count label when the number drops.
+    private void PunchCount()
+    {
+        if (countLabel == null) return;
+
+        Transform t = countLabel.transform;
+        t.DOKill();
+        t.localScale = labelBaseScale;
+        t.DOPunchScale(labelBaseScale * countPunchScale, countPunchTime, 6, 0.8f);
+
+        if (flashColor)
+        {
+            countLabel.color = flashTo;
+            DOTween.To(() => 0f, x =>
+            {
+                if (countLabel != null) countLabel.color = Color.Lerp(flashTo, labelBaseColor, x);
+            }, 1f, countPunchTime);
+        }
+    }
+
+    // Bubble pops when empty: swell a bit, then shrink away + water splash particle.
+    private void Explode()
+    {
+        if (exploded) return;
+        exploded = true;
+
+        // hide the count label
+        if (countLabel != null) countLabel.gameObject.SetActive(false);
+
+        Sequence seq = DOTween.Sequence();
+        seq.Append(transform.DOScale(transform.localScale * explodeSwellScale, explodeSwellTime).SetEase(Ease.OutQuad));
+        seq.Append(transform.DOScale(Vector3.zero, explodePopTime).SetEase(Ease.InBack));
+        seq.OnComplete(() =>
+        {
+            if (explodeEffect != null)
+                Instantiate(explodeEffect, transform.position, Quaternion.identity);
+            BubbleManager.Unregister(this);
+            Destroy(gameObject);
+        });
     }
 
     private void OnDrawGizmosSelected()

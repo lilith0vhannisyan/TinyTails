@@ -62,6 +62,8 @@ public class BubbleManager : MonoBehaviour
         }
     }
 
-    // Optional: call once at level start to fill initial free lotuses.
-    private void Start() => Resolve();
+    // Bubbles should NOT release at level start. They only release when a lotus
+    // becomes free DURING play (the player collects an axolotl -> Lotus.Clear()
+    // -> NotifyChanged() -> Resolve()). So no Start() Resolve here.
+    // private void Start() => Resolve();
 }
