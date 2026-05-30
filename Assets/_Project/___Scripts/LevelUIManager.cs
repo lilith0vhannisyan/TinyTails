@@ -1,21 +1,19 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Owns all in-scene UI for a gameplay level.
-/// Lives only in level scenes — NOT in the main menu.
+/// PERSISTENT UI manager — lives under GameManager (DontDestroyOnLoad).
+/// One instance for the whole game; responds to scene-load events to refresh.
 ///
-/// LEVEL SCENE SETUP (assign in Inspector):
-///   Panels   → gameplayPanel, pausePanel, winPanel, losePanel
+/// Setup (assign in Inspector, ONCE in _StartMenu scene):
+///   Panels   → gameplayPanel (HUD), pausePanel, winPanel, losePanel
 ///   HUD      → levelNumberText
 ///   Buttons  → pauseButton, retryButton (HUD)
 ///              pauseContinueButton, pauseHomeButton   (pause panel)
 ///              winNextLevelButton,  winHomeButton     (win panel)
 ///              loseRetryButton,     loseHomeButton    (lose panel)
-///
-/// All button listeners are wired in Start() — nothing needs to be set
-/// in the Inspector's OnClick fields unless you prefer manual overrides.
 /// </summary>
 public class LevelUIManager : MonoBehaviour
 {
@@ -44,66 +42,64 @@ public class LevelUIManager : MonoBehaviour
     public Button loseRetryButton;
     public Button loseHomeButton;
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Unity Lifecycle
-    // ══════════════════════════════════════════════════════════════════════
+    [Header("Menu Scene Names")]
+    public string startMenuSceneName = "_StartMenu";
+    public string levelSelectSceneName = "_LevelSelect";
 
     private void Awake()
     {
+        // Singleton — only one across whole game.
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     private void Start()
     {
-        InitPanels();
-        SetLevelText();
         WireButtons();
-
-        // Re-hook all buttons (including the ones just wired above) for global click sound
-        if (GameManager.Instance != null)
-            GameManager.Instance.HookUpAllButtonsInScene();
+        // Apply initial state for the scene we're already in.
+        OnSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Initialisation
-    // ══════════════════════════════════════════════════════════════════════
-
-    private void InitPanels()
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        SetPanel(gameplayPanel, true);
-        SetPanel(pausePanel,    false);
-        SetPanel(winPanel,      false);
-        SetPanel(losePanel,     false);
-    }
+        bool isMenu = scene.name == startMenuSceneName || scene.name == levelSelectSceneName;
 
-    private void SetLevelText()
-    {
-        if (levelNumberText != null)
-            levelNumberText.text = "Level " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+        // Hide all level panels on every scene change.
+        SetPanel(pausePanel, false);
+        SetPanel(winPanel, false);
+        SetPanel(losePanel, false);
+
+        // HUD only visible in level scenes.
+        SetPanel(gameplayPanel, !isMenu);
+
+        // Update level number from the scene's build index.
+        if (!isMenu && levelNumberText != null)
+        {
+            int idx = scene.buildIndex;
+            levelNumberText.text = "Level " + idx;
+        }
     }
 
     private void WireButtons()
     {
         if (GameManager.Instance == null) return;
 
-        // HUD
         AddListener(pauseButton,         GameManager.Instance.OnPause);
         AddListener(retryButton,         GameManager.Instance.OnRetryLevel);
-
-        // Pause panel
         AddListener(pauseContinueButton, GameManager.Instance.OnContinue);
         AddListener(pauseHomeButton,     GameManager.Instance.OnMainMenu);
-
-        // Win panel
         AddListener(winNextLevelButton,  GameManager.Instance.OnNextLevel);
         AddListener(winHomeButton,       GameManager.Instance.OnMainMenu);
-
-        // Lose panel
         AddListener(loseRetryButton,     GameManager.Instance.OnRetryLevel);
         AddListener(loseHomeButton,      GameManager.Instance.OnMainMenu);
     }
 
-    /// Adds a listener safely — removes first to prevent duplicates on hot reload.
     private static void AddListener(Button btn, UnityEngine.Events.UnityAction action)
     {
         if (btn == null) return;
@@ -111,50 +107,30 @@ public class LevelUIManager : MonoBehaviour
         btn.onClick.AddListener(action);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Panel State — called by GameManager
-    // ══════════════════════════════════════════════════════════════════════
-
+    // ---- Called by GameManager when level completes / fails ----
     public void ShowWinScreen()
     {
         SetPanel(gameplayPanel, false);
-        SetPanel(pausePanel,    false);
-        SetPanel(winPanel,      true);
+        SetPanel(pausePanel, false);
+        SetPanel(winPanel, true);
     }
 
     public void ShowLoseScreen()
     {
         SetPanel(gameplayPanel, false);
-        SetPanel(pausePanel,    false);
-        SetPanel(losePanel,     true);
-    }
-
-    public void ShowPauseScreen()
-    {
-        SetPanel(pausePanel, true);
-    }
-
-    public void HidePauseScreen()
-    {
         SetPanel(pausePanel, false);
+        SetPanel(losePanel, true);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Manual Inspector Fallbacks
-    // (Wire these in the Inspector's OnClick field if you prefer that workflow)
-    // ══════════════════════════════════════════════════════════════════════
+    public void ShowPauseScreen() => SetPanel(pausePanel, true);
+    public void HidePauseScreen() => SetPanel(pausePanel, false);
 
-    public void OnPause()       => GameManager.Instance?.OnPause();
-    public void OnResume()      => GameManager.Instance?.OnContinue();
-    public void OnRetry()       => GameManager.Instance?.OnRetryLevel();
-    public void OnNextLevel()   => GameManager.Instance?.OnNextLevel();
-    public void OnMainMenu()    => GameManager.Instance?.OnMainMenu();
-
-
-
-    // ══════════════════════════════════════════════════════════════════════
-    // Private Helper
-    // ══════════════════════════════════════════════════════════════════════
+    // ---- Inspector-OnClick fallbacks ----
+    public void OnPause()     => GameManager.Instance?.OnPause();
+    public void OnResume()    => GameManager.Instance?.OnContinue();
+    public void OnRetry()     => GameManager.Instance?.OnRetryLevel();
+    public void OnNextLevel() => GameManager.Instance?.OnNextLevel();
+    public void OnMainMenu()  => GameManager.Instance?.OnMainMenu();
 
     private static void SetPanel(GameObject panel, bool active)
     {

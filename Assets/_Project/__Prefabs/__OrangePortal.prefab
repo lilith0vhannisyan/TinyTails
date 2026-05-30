@@ -443,7 +443,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b1d7133cc6b85e4a9d4aeee9b3252db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Portal
-  portalColor: 2
+  portalColor: 4
   standPoint: {fileID: 0}
   riseHeight: 0.6
   riseTime: 0.25

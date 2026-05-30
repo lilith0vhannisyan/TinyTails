@@ -1,12 +1,11 @@
 using UnityEngine;
 
 // Put this on each axolotl so their idle animations are NOT synced.
-// At start it gives the Animator a random start time (offset) within the idle clip,
-// and a slightly random playback speed, so a group of axolotls looks natural
-// instead of all bobbing in unison.
+// Each axolotl picks ONE speed from the `speeds` array at random,
+// plus an optional random start offset within the idle clip.
+// This way you control exactly what speeds are allowed (not too slow, not too fast).
 //
 // Note: if the axolotl is iced, AxolotlIce overrides animator.speed while frozen.
-// This script only sets the *initial* desync; it does not fight the ice slowdown.
 public class RandomIdle : MonoBehaviour
 {
     [Header("Idle state")]
@@ -15,10 +14,9 @@ public class RandomIdle : MonoBehaviour
     [Tooltip("Animator layer the idle state is on (0 = base layer).")]
     public int layer = 0;
 
-    [Header("Random ranges")]
-    [Tooltip("Random playback speed range (1 = normal). e.g. 0.85 - 1.15")]
-    public float minSpeed = 0.85f;
-    public float maxSpeed = 1.15f;
+    [Header("Random speeds")]
+    [Tooltip("List of allowed playback speeds. Each axolotl picks ONE at random.")]
+    public float[] speeds = new float[] { 0.9f, 1.0f, 1.1f, 1.2f };
 
     [Tooltip("If true, also randomize the START offset within the idle clip.")]
     public bool randomizeStartOffset = true;
@@ -35,10 +33,14 @@ public class RandomIdle : MonoBehaviour
         var ice = GetComponent<AxolotlIce>();
         if (ice != null && ice.IsFrozen) return;
 
-        // random speed
-        animator.speed = Random.Range(minSpeed, maxSpeed);
+        // Pick a random speed from the array.
+        if (speeds != null && speeds.Length > 0)
+        {
+            int idx = Random.Range(0, speeds.Length);
+            animator.speed = speeds[idx];
+        }
 
-        // random start offset within the idle clip
+        // Random start offset within the idle clip.
         if (randomizeStartOffset)
         {
             float randomOffset = Random.value; // 0..1 normalized time
